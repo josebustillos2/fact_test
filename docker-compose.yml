@@ -1,0 +1,60 @@
+version: "3"
+
+services:
+  db:
+    image: postgres:14.9
+    container_name: db-app-test
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 12345
+      POSTGRES_DB: billing
+    volumes:
+      - .volumens/postgres:/var/lib/postgresql/data/
+    ports:
+      - "5454:5432"
+    networks:
+      - billing-network
+  cache:
+    image: redis:7.0
+    container_name: redis-app-test
+    command: [ "redis-server", "--appendonly", "yes" ]  # Habilita la persistencia de datos
+    restart: always
+    volumes:
+      - .volumens/redis-data:/data  # Monta un volumen para persistir los datos
+    ports:
+      - "6363:6379"
+    networks:
+      - billing-network
+  mail:
+    image: mailhog/mailhog:latest
+    container_name: mail-app-test
+    restart: always
+    ports:
+      - "1025:1025"  # Puerto para recibir correos electrónicos
+      - "8025:8025"  # Puerto para la interfaz web de MailHog
+    networks:
+      - billing-network
+  app:
+    build:
+      dockerfile: Dockerfile
+    container_name: billing-app-test
+    restart: always
+    env_file: back.env
+    expose:
+      - "8000"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/src
+    depends_on:
+      - db
+      - cache
+      - mail
+    networks:
+      - billing-network
+networks:
+  billing-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
